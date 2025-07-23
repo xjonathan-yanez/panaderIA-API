@@ -1,15 +1,50 @@
 // 1. Importar Express
 const express = require('express');
+const { getSecret } = require('./config/secrets');
 
+const cors = require('cors');
 // 2. Inicializar la aplicación Express
 const app = express();
 
+app.use(cors());
 // 3. Definir el puerto
 // Usamos el puerto 3000 por defecto, pero puede ser configurado por una variable de entorno.
 const PORT = process.env.PORT || 3000;
 
 // Middleware para parsear JSON (aunque no es necesario para estos GET, es buena práctica tenerlo)
 app.use(express.json());
+
+async function startServer() {
+  try {
+    console.log('Loading secrets...');
+    
+    // Carga todos los secretos necesarios al inicio y guárdalos en app.locals
+    // app.locals es un buen lugar para datos a nivel de aplicación.
+    app.locals.secrets = {
+      dbPassword: await getSecret('db_password')
+    };
+
+    console.log('Secrets loaded successfully. Starting server...');
+
+    // Configura tus rutas aquí, después de cargar los secretos
+    app.get('/', (req, res) => {
+      // Ejemplo de cómo usar un secreto en una ruta
+      const { apiKey } = req.app.locals.secrets;
+      res.send(`App is running! The API Key starts with: ${apiKey.substring(0, 5)}...`);
+    });
+
+    // Inicia el servidor solo si los secretos se cargaron correctamente
+    app.listen(port, () => {
+      console.log(`Server listening at http://localhost:${port}`);
+    });
+
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+
 
 // --- Base de Datos Mockup (en memoria) ---
 // En una aplicación real, esto vendría de una base de datos (PostgreSQL, MongoDB, etc.).
@@ -125,4 +160,5 @@ app.post('/pedidos', (req, res) => {
 // 4. Iniciar el servidor
 app.listen(PORT, () => {
     console.log(`Servidor escuchando en el puerto http://localhost:${PORT}`);
+    startServer();
 });
